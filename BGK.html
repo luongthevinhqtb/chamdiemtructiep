@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Chấm điểm</title>
+<style>
+body{font-family:Arial;text-align:center;background:#0f172a;color:white;padding:20px}
+select,input,button{padding:12px;margin:10px;font-size:18px;border-radius:8px;border:none}
+button{background:#22c55e;color:white;cursor:pointer}
+</style>
+</head>
+<body>
+
+<h2>📱 Trang chấm điểm</h2>
+
+<select id="performance">
+<option>Tiết mục 1</option>
+<option>Tiết mục 2</option>
+<option>Tiết mục 3</option>
+</select><br>
+
+<input type="text" id="judge" placeholder="Tên giám khảo"><br>
+<input type="number" id="score" min="0" max="10" placeholder="Điểm (0-10)"><br>
+
+<button onclick="submitScore()">Gửi điểm</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "DÁN_API_KEY",
+  authDomain: "PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "PROJECT_ID",
+  appId: "APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+window.submitScore = async function(){
+  const performance = document.getElementById("performance").value;
+  const judge = document.getElementById("judge").value.trim();
+  const score = parseFloat(document.getElementById("score").value);
+
+  if(!judge){ alert("Nhập tên giám khảo!"); return; }
+
+  const scoreRef = ref(db, "scores/"+performance+"/"+judge);
+
+  const snapshot = await get(scoreRef);
+  if(snapshot.exists()){
+    alert("Giám khảo đã chấm rồi!");
+    return;
+  }
+
+  await set(scoreRef,{score:score});
+  alert("Đã gửi điểm!");
+}
+</script>
+</body>
+</html>

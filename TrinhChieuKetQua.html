@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bảng Điểm Trực Tiếp</title>
+<style>
+body{font-family:Arial;background:black;color:white;text-align:center}
+h1{font-size:50px;color:gold}
+.rank{font-size:40px;margin:15px}
+button{padding:10px 20px;font-size:18px;margin:10px}
+</style>
+</head>
+<body>
+
+<h1>🏆 KẾT QUẢ TRỰC TIẾP</h1>
+<div id="results"></div>
+
+<button onclick="exportExcel()">📥 Xuất Excel</button>
+<button onclick="resetScores()">🔄 Reset</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "DÁN_API_KEY",
+  authDomain: "PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "PROJECT_ID",
+  appId: "APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const resultsDiv = document.getElementById("results");
+
+function animateValue(element, start, end, duration){
+  let startTime = null;
+  function animation(currentTime){
+    if(!startTime) startTime = currentTime;
+    const progress = Math.min((currentTime-startTime)/duration,1);
+    element.innerHTML = (progress*(end-start)+start).toFixed(2);
+    if(progress<1) requestAnimationFrame(animation);
+  }
+  requestAnimationFrame(animation);
+}
+
+onValue(ref(db,"scores"), snapshot=>{
+  resultsDiv.innerHTML="";
+  const data = snapshot.val();
+  if(!data) return;
+
+  let performances=[];
+
+  for(let performance in data){
+    let total=0,count=0;
+    for(let judge in data[performance]){
+      total+=data[performance][judge].score;
+      count++;
+    }
+    performances.push({
+      name:performance,
+      avg:(total/count)
+    });
+  }
+
+  performances.sort((a,b)=>b.avg-a.avg);
+
+  performances.forEach((p,index)=>{
+    const div=document.createElement("div");
+    div.className="rank";
+
+    let medal="";
+    if(index==0) medal="🥇";
+    else if(index==1) medal="🥈";
+    else if(index==2) medal="🥉";
+
+    div.innerHTML=`${medal} Hạng ${index+1}: ${p.name} - <span id="score${index}">0</span>`;
+    resultsDiv.appendChild(div);
+
+    const scoreSpan=document.getElementById("score"+index);
+    animateValue(scoreSpan,0,p.avg,1000);
+  });
+});
+
+window.resetScores=function(){
+  if(confirm("Xóa toàn bộ điểm?")){
+    remove(ref(db,"scores"));
+  }
+}
+
+window.exportExcel=function(){
+  import("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js").then(()=>{
+    onValue(ref(db,"scores"), snapshot=>{
+      const data=snapshot.val();
+      let rows=[];
+      for(let performance in data){
+        let total=0,count=0;
+        for(let judge in data[performance]){
+          total+=data[performance][judge].score;
+          count++;
+        }
+        rows.push({
+          "Tiết mục":performance,
+          "Trung bình":(total/count).toFixed(2)
+        });
+      }
+
+      const ws=XLSX.utils.json_to_sheet(rows);
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,"KetQua");
+      XLSX.writeFile(wb,"KetQuaChamDiem.xlsx");
+    },{onlyOnce:true});
+  });
+}
+</script>
+</body>
+</html>
